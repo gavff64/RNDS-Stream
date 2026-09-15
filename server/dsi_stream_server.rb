@@ -57,24 +57,26 @@ client.write(
   "Connection: close\r\n\r\n"
 )
 
-# send the raw jpeg bytes continually. DSi decodes on device.
+# send one raw jpeg after the DSi requests it. DSi decodes on device.
 sent = 0
 
 loop do
-  frame = nil
-  number = nil
+  ready = client.read(1) # wait until the DSi sends one byte.
+  break if !ready || ready.empty? # stop if connectionis closed.
 
-  frame_mutex.synchronize do
-    if latest_frame && frame_number != sent
-      frame = latest_frame
-      number = frame_number
+  frame = nil # the jpeg frame to send.
+  number = nil # that jpeg's frame number.
+
+  until frame
+    frame_mutex.synchronize do
+      if latest_frame && frame_number != sent
+        frame = latest_frame
+        number = frame_number
+      end
     end
+    Thread.pass unless frame
   end
 
-  if frame
-    client.write(frame)
-    sent = number
-  else
-    Thread.pass # if nothing is new, do nothing.
-  end
+  client.write(frame)
+  sent = number # store which frame was sent so that you don't send the same frame again.
 end
