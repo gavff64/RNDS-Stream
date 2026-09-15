@@ -1,0 +1,3 @@
+[submodule "vendor/RubyNDS"]
+	path = vendor/RubyNDS
+	url = git@github.com:gavff64/RubyNDS.git
