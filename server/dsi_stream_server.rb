@@ -1,4 +1,4 @@
-# Comments are purely for me, especially on the actual capture portion, it's very tricky.
+# Comments are purely for me, especially on the actual capture portion, it's very tricky -gavff :)
 
 require "open3"
 require "socket"
@@ -7,7 +7,7 @@ require_relative "jpeg_helper"
 
 puts "Enter program name to capture: "
 print "Enter: "
-PROGRAM = gets.chop.chomp.downcase # server restarts when client restarts so a constant is fine
+PROGRAM = gets.chop.chomp.downcase # server should restart (at some point, not implemented) when client restarts so a constant is fine
 
 window = `wmctrl -l`.downcase.lines.find {|line| line.include?(PROGRAM)} # wmctrl is x11/xwayland only so probably wanna replace with something better eventually
 
@@ -18,18 +18,23 @@ rescue RuntimeError => e
   exit # goofy, temporary. Why is this a rescue then lol
 end
 
-mjpeg = gstreamer(window.split[0].to_i(16)) # gstreamer wants hexidecimal xid (window id, kinda)
+puts "Streaming '#{PROGRAM}'..."
+puts "Control + C to stop."
+
+mjpeg = gstreamer(window.split[0].to_i(16)) # gstreamer wants hexidecimal xid (window id, kinda), so convert wmctrl value
 
 latest_frame = nil
 frame_number = 0
 frame_mutex = Mutex.new # capture thread and main server thread both work with latest_frame/frame_number, so mutex is needed for proper syncing.
+
 capture = Thread.new do
   Open3.pipeline_r(mjpeg) do |stream| # start gstreamer command built by helper, stream it's output.
     stream.binmode # set IO stream to binary mode rather than text (possibly not required on linux anyway)
     data = "".b # assign data to a blank string with its encoding forced to binary
 
-    # data buffer 4096 bytes at a time
-    while chunk = stream.read(4096)
+    # data buffer
+    loop do
+      chunk = stream.readpartial(16384) # send whatever is available immediately, up to 16,384 bytes.
       data << chunk
 
       while frame = jpeg_frame(data)
@@ -39,11 +44,14 @@ capture = Thread.new do
         end
       end
     end
+  rescue EOFError # EOFError is raised when gstreamer dies. Handles this.
   end
 end
 
 server = TCPServer.new("0.0.0.0", 8080)
 client = server.accept
+puts "Client connected"
+client.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) # I think this barely improves performance? Sends data to the client immediately, doesn't hold or combine data.
 
 # read then ignore the initial request from the DSi, irrelevant, just waiting for connection to complete.
 while line = client.gets
@@ -62,11 +70,12 @@ sent = 0
 
 loop do
   ready = client.read(1) # wait until the DSi sends one byte.
-  break if !ready || ready.empty? # stop if connectionis closed.
+  break if !ready || ready.empty? # stop if connection is closed.
 
   frame = nil # the jpeg frame to send.
   number = nil # that jpeg's frame number.
 
+  # ensure there is a frame, and it's actually a new frame.
   until frame
     frame_mutex.synchronize do
       if latest_frame && frame_number != sent
@@ -74,7 +83,7 @@ loop do
         number = frame_number
       end
     end
-    Thread.pass unless frame
+    Thread.pass unless frame # if nothing is new, stop wasting time and pass the turn to other threads.
   end
 
   client.write(frame)

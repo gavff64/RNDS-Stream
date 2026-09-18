@@ -1,4 +1,5 @@
-VIDEO = [160, 96, 72, false, "1/1"] # Seems to be the highest fps + highest res + highest quality combo I could get on the DSi.
+VIDEO = [256, 192, 72, false, "1/1"]
+# VIDEO = [160, 96, 72, false, "1/1"] # Seems to be the highest fps + highest res + highest quality combo I could get on the DSi.
 
 def gstreamer(window_id)
   width, height, quality, borders, ratio = VIDEO # ^
@@ -13,6 +14,6 @@ def gstreamer(window_id)
     "!", "queue", "leaky=downstream", "max-size-buffers=1", "max-size-bytes=0", "max-size-time=0",
     "!", "jpegenc", "quality=#{quality}",
     "!", "fdsink", "fd=1", "sync=false", "async=false",
-    { pgroup: true, err: File::NULL } # put spawned process into it's own group so control + c kills the entire process. Suppress noisy output with "err: File::NULL".
+    {err: File::NULL} # silence gstreamer's noisy output.
   ]
 end
