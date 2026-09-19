@@ -20,6 +20,12 @@ CONTROLS = {
   1 << 0 => :space # KEY_A
 }
 
+# ydotool's 1 byte formatting to indicate left/right click up and down
+MOUSE = {
+  1 << 9 => { down: "0x40", up: "0x80" }, # KEY_L
+  1 << 8 => { down: "0x41", up: "0x81" }  # KEY_R
+}
+
 begin
   raise if window.nil?
 rescue RuntimeError => e
@@ -102,6 +108,24 @@ loop do
   end
 
   Rubydotool.run("key", *events) unless events.empty? # the "key" subcommand is needed for ydotool. Splat because ydotool can do multiple events in a single process.
+
+  clicks = []
+
+  MOUSE.each do |button, codes|
+    was_held = (previous & button) != 0
+    is_held = (held & button) != 0
+    next if was_held == is_held
+
+    if is_held
+      state = :down
+    else
+      state = :up
+    end
+
+    clicks << codes[state] # 0x40/0x80 is left down/up, 0x41/0x81 is right down/up
+  end
+
+  Rubydotool.run("click", *clicks) unless clicks.empty? # same story ^
   previous = held
 
   frame = nil # the jpeg frame to send.
