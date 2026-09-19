@@ -1,27 +1,18 @@
 HOST = "192.168.12.189"
 
 stream = HTTP.get(HOST, port: 8080, stream: true)
-video = Draw.load(stream)
+video = Draw.load(stream) # constant stream of bytes regardless if compeleted, not completed, over completed. Wrapper ensures we only work with 1 jpeg at a time.
 Draw.stretch(205, 154, :top)
 
-frames = 0
-started = Timer.ms
-stream.write("\x01")
+fps = FPS.new
+stream.write("\x01") # ask for the first frame
 
 while System.main_loop?
-  frame = video.read
-  break unless frame
-  stream.write("\x01") # send one byte to the server letting it know we're ready for the next frame.
-  Draw.image(Draw.load(frame), 0, 0)
+  frame = video.read # either returns a complete jpeg or nil (this is from MJPEG#read)
+  break unless frame # kill the loop if video.read returns nil
 
-  frames += 1
-  now = Timer.ms
-  elapsed = now - started
+  stream.write("\x01") # ask for the next frame BEFORE drawing this one, so the server works while the ds decodes
+  Draw.image(Draw.load(frame), 0, 0) # load the frame, then display, instead of using Draw.video because of ^^^
 
-  if elapsed >= 1000
-    print "\e[2J\e[H"
-    puts "#{frames * 1000 / elapsed} FPS"
-    frames = 0
-    started = now
-  end
+  fps.tick
 end
