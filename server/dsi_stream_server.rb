@@ -1,24 +1,23 @@
-# Comments are purely for me, especially on the actual capture portion, it's very tricky -gavff :)
+# These are my notes just to ensure I fully understand everything going on. Optimizing this is difficult. -gavff
 
 require "open3"
 require "socket"
 require_relative "gstreamer_helper"
 require_relative "jpeg_helper"
+require_relative "steam_list"
 
-puts "Enter program name to capture: "
-print "Enter: "
-PROGRAM = gets.chop.chomp.downcase # server should restart (at some point, not implemented) when client restarts so a constant is fine
+window = steam_find_launch # wmctrl is x11/xwayland only so probably wanna replace with something better eventually
 
-window = `wmctrl -l`.downcase.lines.find {|line| line.include?(PROGRAM)} # wmctrl is x11/xwayland only so probably wanna replace with something better eventually
+PROGRAM = window.split[3..-1].join(" ") # server should restart (at some point, not implemented) when client restarts so a constant is fine. Parses name from wmctrl.
 
 begin
   raise if window.nil?
 rescue RuntimeError => e
   puts "'#{PROGRAM}' not found."
-  exit # goofy, temporary. Why is this a rescue then lol
+  exit
 end
 
-puts "Streaming '#{PROGRAM}'..."
+puts "Successfully started streaming..."
 puts "Control + C to stop."
 
 mjpeg = gstreamer(window.split[0].to_i(16)) # gstreamer wants hexidecimal xid (window id, kinda), so convert wmctrl value

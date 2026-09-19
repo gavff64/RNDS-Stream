@@ -2,7 +2,7 @@ HOST = "192.168.12.189"
 
 stream = HTTP.get(HOST, port: 8080, stream: true)
 video = Draw.load(stream)
-# Draw.stretch(160, 96, :top)
+Draw.stretch(205, 154, :top)
 
 frames = 0
 started = Timer.ms
