@@ -26,6 +26,8 @@ MOUSE = {
   1 << 8 => { down: "0x41", up: "0x81" }  # KEY_R
 }
 
+MOUSE_SPEED = 2 # touch movement is in DS pixels, this scales it to "mouse counts". It's a multiplier, kinda sorta sensitivity. So 2 is like a 2:1 ratio.
+
 begin
   raise if window.nil?
 rescue RuntimeError => e
@@ -88,7 +90,7 @@ loop do
   line = client.gets # the DSi sends its held buttons with every frame request.
   break if line.nil? # stop if connection is closed.
 
-  held = line.to_i
+  held, dx, dy = line.split(",").map(&:to_i) # parse "line" to an array of integers. "64,5,-3\n" for example turns to [64, 5, -3], assign to held, dx, dy.
   events = []
 
   CONTROLS.each do |button, key|
@@ -125,7 +127,8 @@ loop do
     clicks << codes[state] # 0x40/0x80 is left down/up, 0x41/0x81 is right down/up
   end
 
-  Rubydotool.run("click", *clicks) unless clicks.empty? # same story ^
+  Rubydotool.run("click", *clicks) unless clicks.empty?
+  Rubydotool.run("mousemove", "--", dx * MOUSE_SPEED, dy * MOUSE_SPEED) if dx != 0 || dy != 0 # "--" is so ydotool doesn't mistake negatives for flags.
   previous = held
 
   frame = nil # the jpeg frame to send.
