@@ -2,6 +2,7 @@
 
 require "open3"
 require "socket"
+require "rubydotool"
 require_relative "gstreamer_helper"
 require_relative "jpeg_helper"
 require_relative "steam_list"
@@ -9,6 +10,15 @@ require_relative "steam_list"
 window = steam_find_launch # wmctrl is x11/xwayland only so probably wanna replace with something better eventually
 
 PROGRAM = window.split[3..-1].join(" ") # server should restart (at some point, not implemented) when client restarts so a constant is fine. Parses name from wmctrl.
+
+# match dsi button bit values (listed in rubynds input mrbgem) with the keycodes.json from rubydotool. (ds only sends a single number to server per event)
+CONTROLS = {
+  1 << 6 => :w, # KEY_UP
+  1 << 7 => :s, # KEY_DOWN
+  1 << 5 => :a, # KEY_LEFT
+  1 << 4 => :d,  # KEY_RIGHT
+  1 << 0 => :space # KEY_A
+}
 
 begin
   raise if window.nil?
@@ -64,12 +74,35 @@ client.write(
   "Connection: close\r\n\r\n"
 )
 
-# send one raw jpeg after the DSi requests it. DSi decodes on device.
 sent = 0
+previous = 0
+Rubydotool.start # boot the ydotool daemon once
 
 loop do
-  ready = client.read(1) # wait until the DSi sends one byte.
-  break if !ready || ready.empty? # stop if connection is closed.
+  line = client.gets # the DSi sends its held buttons with every frame request.
+  break if line.nil? # stop if connection is closed.
+
+  held = line.to_i
+  events = []
+
+  CONTROLS.each do |button, key|
+    was_held = (previous & button) != 0
+    is_held = (held & button) != 0
+    next if was_held == is_held # do nothing different if the button hasn't changed from the last
+
+    keycode = Rubydotool.find_keycode(key)
+
+    if is_held
+      state = 1
+    else
+      state = 0
+    end
+
+    events << "#{keycode}:#{state}" # ydotool takes "keycode:state", 1 is press, 0 is release
+  end
+
+  Rubydotool.run("key", *events) unless events.empty? # the "key" subcommand is needed for ydotool. Splat because ydotool can do multiple events in a single process.
+  previous = held
 
   frame = nil # the jpeg frame to send.
   number = nil # that jpeg's frame number.
