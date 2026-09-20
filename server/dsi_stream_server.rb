@@ -6,8 +6,18 @@ require "rubydotool"
 require_relative "gstreamer_helper"
 require_relative "jpeg_helper"
 require_relative "steam_list"
+require_relative "prism_list"
 
-window = steam_find_launch # wmctrl is x11/xwayland only so probably wanna replace with something better eventually
+puts "1. Steam"
+puts "2. Prism"
+print "Pick a source: "
+
+# wmctrl is x11/xwayland only so probably wanna replace with something better eventually
+if gets.strip == "2"
+  window = prism_find_launch
+else
+  window = steam_find_launch
+end
 
 PROGRAM = window.split[3..-1].join(" ") # server should restart (at some point, not implemented) when client restarts so a constant is fine. Parses name from wmctrl.
 
