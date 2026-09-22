@@ -2,15 +2,17 @@ require "pathname"
 
 def prism_games
   instances = []
-  configs = []
+  installs = [
+    ["Prism Flatpak", "~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances", ["flatpak", "run", "org.prismlauncher.PrismLauncher"]],
+    ["Prism", "~/.local/share/PrismLauncher/instances", ["prismlauncher"]]
+  ]
 
-  configs += Pathname("~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances").expand_path.glob("*/instance.cfg")
-  configs += Pathname("~/.local/share/PrismLauncher/instances").expand_path.glob("*/instance.cfg")
-
-  configs.each do |config|
-    folder = config.dirname.basename.to_s
-    name = config.read[/^name=(.+)$/, 1] || folder
-    instances << Game.new("Prism", name.strip, "minecraft", ["flatpak", "run", "org.prismlauncher.PrismLauncher", "--launch", folder])
+  installs.each do |source, path, launcher|
+    Pathname(path).expand_path.glob("*/instance.cfg").each do |config|
+      folder = config.dirname.basename.to_s
+      name = config.read[/^name=(.+)$/, 1] || folder
+      instances << Game.new(source, name.strip, "minecraft", launcher + ["--launch", folder])
+    end
   end
 
   instances
