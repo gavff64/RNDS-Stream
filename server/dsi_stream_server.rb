@@ -8,18 +8,8 @@ require_relative "jpeg_helper"
 require_relative "steam_list"
 require_relative "prism_list"
 
-puts "1. Steam"
-puts "2. Prism"
-print "Pick a source: "
-
-# wmctrl is x11/xwayland only so probably wanna replace with something better eventually
-if gets.strip == "2"
-  window = prism_find_launch
-else
-  window = steam_find_launch
-end
-
-PROGRAM = window.split[3..-1].join(" ") # server should restart (at some point, not implemented) when client restarts so a constant is fine. Parses name from wmctrl.
+Game = Struct.new(:source, :name, :match, :command)
+GAMES = steam_games + prism_games
 
 # match dsi button bit values (listed in rubynds input mrbgem) with the keycodes.json from rubydotool. (ds only sends a single number to server per event)
 CONTROLS = {
@@ -38,44 +28,8 @@ MOUSE = {
 
 MOUSE_SPEED = 2 # touch movement is in DS pixels, this scales it to "mouse counts". It's a multiplier, kinda sorta sensitivity. So 2 is like a 2:1 ratio.
 
-begin
-  raise if window.nil?
-rescue RuntimeError => e
-  puts "'#{PROGRAM}' not found."
-  exit
-end
-
-puts "Successfully started streaming..."
-puts "Control + C to stop."
-
-mjpeg = gstreamer(window.split[0].to_i(16)) # gstreamer wants hexidecimal xid (window id, kinda), so convert wmctrl value
-
-latest_frame = nil
-frame_number = 0
-frame_mutex = Mutex.new # capture thread and main server thread both work with latest_frame/frame_number, so mutex is needed for proper syncing.
-
-capture = Thread.new do
-  Open3.pipeline_r(mjpeg) do |stream| # start gstreamer command built by helper, stream it's output.
-    stream.binmode # set IO stream to binary mode rather than text (possibly not required on linux anyway)
-    data = "".b # assign data to a blank string with its encoding forced to binary
-
-    # data buffer
-    loop do
-      chunk = stream.readpartial(16384) # send whatever is available immediately, up to 16,384 bytes.
-      data << chunk
-
-      while frame = jpeg_frame(data)
-        frame_mutex.synchronize do
-          latest_frame = frame
-          frame_number += 1
-        end
-      end
-    end
-  rescue EOFError # EOFError is raised when gstreamer dies. Handles this.
-  end
-end
-
 server = TCPServer.new("0.0.0.0", 8080)
+puts "Waiting for the DS..."
 client = server.accept
 puts "Client connected"
 client.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) # I think this barely improves performance? Sends data to the client immediately, doesn't hold or combine data.
@@ -91,6 +45,56 @@ client.write(
   "Content-Type: application/octet-stream\r\n" \
   "Connection: close\r\n\r\n"
 )
+
+client.write("#{GAMES.length}\n")
+GAMES.each do |game|
+  client.write("#{game.source}: #{game.name}\n")
+end
+
+choice = client.gets
+raise "No game selected" unless choice && choice.match?(/\Aplay \d+\n\z/)
+
+game = GAMES[choice.split[1].to_i]
+raise "Invalid game" unless game
+
+puts "Launching #{game.name}..."
+Thread.new do
+  system(*game.command, out: File::NULL, err: File::NULL)
+end
+
+window = nil
+until window
+  window = `wmctrl -l`.downcase.lines.find { |line| line.include?(game.match.downcase) }
+  sleep 2 unless window
+end
+
+puts "Successfully started streaming..."
+puts "Control + C to stop."
+
+mjpeg = gstreamer(window.split[0].to_i(16))
+
+latest_frame = nil
+frame_number = 0
+frame_mutex = Mutex.new
+
+capture = Thread.new do
+  Open3.pipeline_r(mjpeg) do |stream|
+    stream.binmode
+    data = "".b
+
+    loop do
+      data << stream.readpartial(16384)
+
+      while frame = jpeg_frame(data)
+        frame_mutex.synchronize do
+          latest_frame = frame
+          frame_number += 1
+        end
+      end
+    end
+  rescue EOFError
+  end
+end
 
 sent = 0
 previous = 0

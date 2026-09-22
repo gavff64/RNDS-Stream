@@ -1,6 +1,61 @@
 HOST = "192.168.12.189"
 
 stream = HTTP.get(HOST, port: 8080, stream: true)
+
+def read_line(stream)
+  line = ""
+
+  loop do
+    chunk = stream.read(1)
+    next if chunk.nil?
+    raise "Disconnected" if chunk == "" # not sure this works
+    break if chunk == "\n"
+    line << chunk
+  end
+  line
+end
+
+games = []
+read_line(stream).to_i.times do
+  games << read_line(stream)
+end
+
+raise "No games found" if games.empty?
+
+selected = 0
+drawn = -1
+
+while System.main_loop?
+  Input.update
+  selected = (selected + 1) % games.length if Input.down?(KEY_DOWN)
+  selected = (selected - 1) % games.length if Input.down?(KEY_UP)
+
+  if selected != drawn
+    drawn = selected
+    first = selected / 18 * 18
+
+    print "\e[2J\e[H"
+    puts "Choose a game"
+    puts "A: play   Up/Down: move"
+    puts
+    puts
+
+    games[first, 18].each_with_index do |name, index|
+      marker = first + index == selected ? "> " : "  "
+      puts "#{marker}#{name[0, 29]}"
+    end
+
+    puts "#{selected + 1} / #{games.length}"
+  end
+
+  break if Input.down?(KEY_A)
+  System.vblank
+end
+
+stream.write("play #{selected}\n")
+print "\e[2J\e[H"
+puts "Launching #{games[selected]}..."
+
 video = Draw.load(stream) # constant stream of bytes regardless if compeleted, not completed, over completed. Wrapper ensures we only work with 1 jpeg at a time.
 Draw.stretch(205, 154, :top)
 
