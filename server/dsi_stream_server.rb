@@ -17,7 +17,12 @@ CONTROLS = {
   1 << 7 => :s, # KEY_DOWN
   1 << 5 => :a, # KEY_LEFT
   1 << 4 => :d,  # KEY_RIGHT
-  1 << 0 => :space # KEY_A
+  1 << 0 => :space, # KEY_A
+  1 << 1 => :left_shift, # KEY_B
+  1 << 10 => :e, # KEY_X
+  1 << 11 => :left_ctrl, # KEY_Y
+  1 << 3 => :escape, # KEY_START
+  1 << 2 => :tab # KEY_SELECT
 }
 
 # ydotool's 1 byte formatting to indicate left/right click up and down

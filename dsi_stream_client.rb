@@ -1,6 +1,11 @@
-HOST = "192.168.12.189"
+raise "SD card unavailable" unless FS.mount
 
-stream = HTTP.get(HOST, port: 8080, stream: true)
+file = FS.open("fat:/rnds-stream.txt")
+host = FS.read(file, 64).strip
+FS.close(file)
+raise "Server address missing" if host.empty?
+
+stream = HTTP.get(host, port: 8080, stream: true)
 
 def read_line(stream)
   line = ""
@@ -37,7 +42,6 @@ while System.main_loop?
     print "\e[2J\e[H"
     puts "Choose a game"
     puts "A: play   Up/Down: move"
-    puts
     puts
 
     games[first, 18].each_with_index do |name, index|
