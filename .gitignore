@@ -1,3 +1,4 @@
 /build/
+/packaging/
 /*.nds
 /rnds-stream.txt
