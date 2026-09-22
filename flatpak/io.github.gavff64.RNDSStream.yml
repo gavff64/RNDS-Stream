@@ -1,0 +1,69 @@
+app-id: io.github.gavff64.RNDSStream
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: rnds-stream
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --device=all
+  - --filesystem=home:ro
+  - --filesystem=~/.var/app/org.prismlauncher.PrismLauncher:ro
+  - --filesystem=~/.var/app/com.valvesoftware.Steam:ro
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: ruby
+    buildsystem: simple
+    build-commands:
+      - ./configure --prefix=/app --disable-install-doc
+      - make -j4
+      - make install
+    sources:
+      - type: archive
+        url: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.6.tar.xz
+        sha256: 9c9d121fe3314ea7c801e690b9de981d2b9d12d7849db99c27482468a541ba0a
+  - name: ydotool
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    sources:
+      - type: archive
+        url: https://github.com/ReimuNotMoe/ydotool/archive/refs/tags/v1.0.4.tar.gz
+        sha256: ba075a43aa6ead51940e892ecffa4d0b8b40c241e4e2bc4bd9bd26b61fde23bd
+      - type: patch
+        path: ydotool-no-manpage.patch
+  - name: rubydotool
+    buildsystem: simple
+    build-commands:
+      - gem install --local --no-document rubydotool-0.1.3.gem
+    sources:
+      - type: file
+        url: https://rubygems.org/downloads/rubydotool-0.1.3.gem
+        sha256: 9cd90421054e514cf0061b6350feed87c9d447235b0dc244a360eca508e57e45
+  - name: rnds-stream
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/rnds-stream/server
+      - cp server/*.rb /app/share/rnds-stream/server/
+      - install -Dm755 run.sh /app/bin/rnds-stream
+      - install -Dm755 host-command.sh /app/bin/host-command
+      - ln -s host-command /app/bin/wmctrl
+      - ln -s host-command /app/bin/gst-launch-1.0
+      - ln -s host-command /app/bin/steam
+      - ln -s host-command /app/bin/flatpak
+      - ln -s host-command /app/bin/prismlauncher
+      - install -Dm644 io.github.gavff64.RNDSStream.desktop /app/share/applications/io.github.gavff64.RNDSStream.desktop
+      - install -Dm644 io.github.gavff64.RNDSStream.png /app/share/icons/hicolor/256x256/apps/io.github.gavff64.RNDSStream.png
+    sources:
+      - type: dir
+        path: ../server
+        dest: server
+      - type: file
+        path: run.sh
+      - type: file
+        path: host-command.sh
+      - type: file
+        path: io.github.gavff64.RNDSStream.desktop
+      - type: file
+        path: io.github.gavff64.RNDSStream.png

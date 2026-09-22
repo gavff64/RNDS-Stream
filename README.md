@@ -39,13 +39,20 @@ Your steam library and prism launcher instances are automatically scanned.
 
    The ROM reads this file through `fat:/`, so it needs to be on the card used by the flashcart, not the DSi's internal SD card. (this should be easy to change in the source code if you're not using a flashcart)
 
-3. Run the AppImage on the PC:
+3. Install `wmctrl` and GStreamer on the PC. The Flatpak uses the host tools to capture game windows. On Fedora:
 
    ```sh
-   ./RNDS-Stream.AppImage
+   sudo dnf install wmctrl gstreamer1 gstreamer1-plugins-good
    ```
 
-4. Open `RNDS-Stream.nds` on the DSi and choose a game.
+4. Install and run the Flatpak on the PC:
+
+   ```sh
+   flatpak install --user RNDS-Stream.flatpak
+   flatpak run io.github.gavff64.RNDSStream
+   ```
+
+5. Open `RNDS-Stream.nds` on the DSi and choose a game.
 
 ## Limitations and Issues
 

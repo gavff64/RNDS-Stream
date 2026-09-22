@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=RNDS-Stream
+Exec=rnds-stream
+Icon=io.github.gavff64.RNDSStream
+Terminal=true
+Categories=Game;

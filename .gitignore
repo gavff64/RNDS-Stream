@@ -1,4 +1,4 @@
 /build/
-/packaging/
+/.flatpak-builder/
 /*.nds
 /rnds-stream.txt
