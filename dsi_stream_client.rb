@@ -1,7 +1,7 @@
 raise "SD card unavailable" unless FS.mount
 
 file = FS.open("fat:/rnds-stream.txt")
-host = FS.read(file, 64).strip
+host = FS.read(file, 64).strip # read up to 64 bytes of the txt
 FS.close(file)
 raise "Server address missing" if host.empty?
 
@@ -20,6 +20,7 @@ def read_line(stream)
   line
 end
 
+# figure out the number of games and repeat appending the game name to the games array that number of times
 games = []
 read_line(stream).to_i.times do
   games << read_line(stream)
@@ -27,8 +28,8 @@ end
 
 raise "No games found" if games.empty?
 
-selected = 0
-drawn = -1
+selected = 0 # which game cursor is on
+drawn = -1 # if drawn is different than selected, then that means screen needs to be redrawn to match
 
 while System.main_loop?
   Input.update

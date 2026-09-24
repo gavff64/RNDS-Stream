@@ -64,7 +64,7 @@ raise "Invalid game" unless game
 
 puts "Launching #{game.name}..."
 Thread.new do
-  system(*game.command, out: File::NULL, err: File::NULL)
+  system(*game.command, out: File::NULL, err: File::NULL) # build the game launch commands and execute it
 end
 
 window = nil
