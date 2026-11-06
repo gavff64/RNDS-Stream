@@ -1,6 +1,6 @@
 raise "SD card unavailable" unless FS.mount
 
-file = FS.open("fat:/rnds-stream.txt")
+file = FS.open("/rnds-stream.txt")
 host = FS.read(file, 64).strip # read up to 64 bytes of the txt
 FS.close(file)
 raise "Server address missing" if host.empty?
